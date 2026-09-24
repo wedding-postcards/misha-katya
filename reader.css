@@ -1,0 +1,42 @@
+/* The continuous view retains the painter's exact 600 by 780 composition. */
+body.reading-mode { overflow-y: auto; overflow-x: hidden; overflow-anchor: none; }
+body.reading-mode #book, body.reading-mode #hotspots { display: none; }
+body.reading-mode #stage { min-height: 0; padding: 0 0 35px; }
+body.reading-mode #mobile-book { display: block; }
+body.reading-mode #book-header { position: sticky; top: 0; background: #282320; }
+.reader-root {
+  --reader-page-width: min(600px, calc(100vw - 24px));
+  --reader-header-height: 64px;
+  width: 100%; margin: 0; color: #39444b; overflow-anchor: none;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+.reader-viewport {
+  width: 100%; overflow: visible; touch-action: auto; overflow-anchor: none;
+}
+.reader-pages {
+  display: flex; flex-direction: column; align-items: stretch; gap: 24px;
+  width: calc(var(--reader-page-width) + 24px); margin: 0 auto; padding: 8px 12px 24px;
+}
+.reader-leaf {
+  position: relative; flex: 0 0 auto; width: var(--reader-page-width); aspect-ratio: 600 / 780;
+  margin: 0; padding: 0; background: #fcfaf5; box-shadow: 0 3px 9px #40352926;
+  scroll-margin-top: calc(var(--reader-header-height) + 12px); overflow-anchor: none;
+}
+.reader-cover { background: #eee9df; }
+.reader-page-image, .reader-hotspots { position: absolute; inset: 0; }
+.reader-page-image { pointer-events: none; }
+.reader-canvas { display: block; width: 100%; height: 100%; }
+.reader-hotspots { z-index: 2; pointer-events: none; }
+.reader-hotspot {
+  position: absolute; display: block; margin: 0; padding: 0; border: 0; border-radius: 0;
+  background: transparent; color: transparent; font-size: 0; pointer-events: auto;
+  transform-origin: center; -webkit-tap-highlight-color: transparent;
+}
+button.reader-hotspot { cursor: pointer; }
+button.reader-hotspot:focus-visible { outline: 2px dashed #8c5659; outline-offset: 3px; background: #ffffff12; }
+.reader-sealed-envelope { cursor: default; }
+.reader-accessible-text {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: normal;
+}
+.reader-root *, .reader-root *::before, .reader-root *::after { animation: none !important; transition: none !important; }
