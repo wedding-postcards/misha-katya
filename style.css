@@ -49,6 +49,12 @@ body{background-color:#272320;background-image:radial-gradient(ellipse at 28% 18
 body.reading-mode #book-header{background:#282320}
 
 /* A quiet pen stroke points to the optional reading view. */
-.mobile-cue{position:absolute;right:205px;top:17px;width:96px;height:48px;fill:none;stroke:#ece2d3;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.8;pointer-events:none}
+.mobile-cue{position:absolute;right:181px;top:12px;width:96px;height:48px;transform:rotate(18deg);transform-origin:center;fill:none;stroke:#ece2d3;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.8;pointer-events:none}
 body.reading-mode .mobile-cue{display:none}
 @media(max-width:760px){.mobile-cue{right:30px;top:52px;width:66px;height:33px;transform:rotate(-35deg);transform-origin:right top}}
+
+/* Readable longer memories, handwritten labels and signatures. */
+.photo-memory{font:20px/1.65 Georgia,serif}
+.letter-object p{font:18px/1.65 Georgia,serif}
+.letter-object .object-note{font:16px/1.6 Georgia,serif}
+@media(max-width:760px){.photo-memory{font-size:18px}.letter-object p{font-size:17px}}

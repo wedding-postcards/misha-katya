@@ -19,7 +19,10 @@ window.createBookPainter=function(assets){
   g.save();g.translate(x+w/2,y+h/2);g.rotate(angle);g.shadowColor='#4b3c2923';g.shadowBlur=4;g.shadowOffsetY=2;g.fillStyle=color;g.beginPath();
   for(let xx=0;xx<=w;xx+=10){const px=Math.min(xx,w)-w/2,py=-h/2+(rand()-.5)*2.1;if(xx===0)g.moveTo(px,py);else g.lineTo(px,py);}g.lineTo(w/2,h/2);for(let xx=w;xx>=0;xx-=10)g.lineTo(xx-w/2,h/2+(rand()-.5)*1.9);g.closePath();g.fill();g.restore();
  }
- function heartGroup(x,y,scale=1,color=ROSE,angle=0){g.save();g.translate(x,y);g.rotate(angle);const marks=BOOK_HEART_GROUPS[activePage]||BOOK_HEART_GROUPS['0R'];for(const m of marks)drawPenHeart(g,m.dx*scale,m.dy*scale,m.size*scale,color,m.angle,m.variant);g.restore();}
+ function heartGroup(x,y,scale=1,color=ROSE,angle=0){g.save();g.translate(x,y);g.rotate(angle);const marks=BOOK_HEART_GROUPS[activePage]||BOOK_HEART_GROUPS['0R'];for(const m of marks)drawPenHeart(g,m.dx*scale,m.dy*scale,m.size*scale,color,m.angle,m.variant);
+ const flourishes={'1R':[[40,-28,4,-8],[48,-21,7,-3]],'2L':[[-24,-4,-8,-5],[-24,7,-6,1],[44,-29,2,-6]],'3L':[[-22,0,-7,-2],[34,-29,3,-7]],'5R':[[49,-19,7,-5],[53,-9,6,1],[-23,4,-6,3]],'6L':[[41,-26,5,-6],[-26,-8,-6,-5]],'6R':[[-21,4,-7,1],[40,-27,1,-7]]};
+ g.strokeStyle=color;g.globalAlpha=.75;g.lineCap='round';
+ for(const [a,b,dx,dy] of flourishes[activePage]||[]){g.lineWidth=(Math.abs(a)%3)*.2+.8;g.beginPath();g.moveTo(a*scale,b*scale);g.quadraticCurveTo((a+dx*.5)*scale,(b+dy*.7)*scale,(a+dx)*scale,(b+dy)*scale);g.stroke();}g.restore();}
  function penArrow(x,y,w,h,color=ROSE){
   const rising=h<0,c1=rising?[x+32,y+9]:[x-12,y+h*.8],c2=rising?[x+w-16,y+h+50]:[x+w*.28,y+h*1.18],end=[x+w,y+h];
   g.save();g.strokeStyle=color;g.lineWidth=1.2;g.lineCap='round';g.lineJoin='round';
@@ -39,23 +42,78 @@ window.createBookPainter=function(assets){
   'в особенный день, спустя годы','секретом для получателя',
   'впервые слышите','вместе запечатаете до выбранной даты',
   'по-настоящему вам дорого','Личные письма останутся между вами',
-  'с вашей особенной даты','только для вас двоих','личные письма при этом не будут видны гостям'
+  'с вашей особенной даты','только для вас двоих','личные письма'
  ];
  function marker(x,y,w,size,line){g.save();g.globalCompositeOperation='multiply';g.fillStyle='#d5b44e60';g.beginPath();g.moveTo(x-3,y-size*.49);g.lineTo(x+w+3,y-size*.57+Math.sin(line)*2);g.lineTo(x+w+1,y+2);g.quadraticCurveTo(x+w*.5,y-1,x-4,y+3);g.closePath();g.fill();g.restore();}
  function lines(text,x,y,width,size=29,opts={}){
+  if(opts.accentFont)return mixedLines(text,x,y,width,size,opts);
   g.save();g.font=`400 ${size}px ${opts.font||'Note'}`;
   const normalized=text.replace(/\s+/g,' ').trim(),lh=opts.lineHeight||size*1.58;
   const marks=opts.highlight===false?[]:markedPhrases.filter(t=>normalized.includes(t)).map(t=>({start:normalized.indexOf(t),end:normalized.indexOf(t)+t.length}));
   let row='',line=0,offset=0;
   const emit=()=>{const xx=x+Math.sin(line*2.3+seed)*1.1,yy=y+line*lh;
-   for(const {start,end} of marks)if(offset<end&&offset+row.length>start){const from=Math.max(0,start-offset),to=Math.min(row.length,end-offset);marker(xx+g.measureText(row.slice(0,from)).width,yy,g.measureText(row.slice(from,to)).width,size,line);}
+   for(const {start,end} of marks)if(offset<end&&offset+row.length>start){const from=Math.max(0,start-offset),to=Math.min(row.length,end-offset);softMarker(xx+g.measureText(row.slice(0,from)).width,yy,g.measureText(row.slice(from,to)).width,size,line);}
    ink(row,xx,yy,size,{...opts,font:opts.font||'Note',rotate:Math.sin(line*1.7)*.0017});offset+=row.length+1;line++;
   };
   for(const word of normalized.split(' ')){const trial=row?row+' '+word:word;if(g.measureText(trial).width>width&&row){emit();row=word;}else row=trial;}
   if(row)emit();g.restore();return y+line*lh;
  }
- function paragraphs(texts,x,y,width,size=29,opts={}){for(const t of texts)y=lines(t,x,y,width,size,opts)+(opts.gap??17);if(y>778)overflow.push({page:activePage,y,text:texts.at(-1)});return y;}
- function title(text,x=63,y=87,width=475,size=46){return lines(text,x,y,width,size,{font:'Hand',lineHeight:size*1.06,gap:0})+17;}
+ function mixedLines(text,x,y,width,size,opts){
+  const normalized=text.replace(/\s+/g,' ').trim(),ranges=markedPhrases.filter(t=>normalized.includes(t)).map(t=>({start:normalized.indexOf(t),end:normalized.indexOf(t)+t.length}));
+  const accentSize=size*1.30,lh=opts.lineHeight||size*1.6;
+  const style=accent=>({font:accent?opts.accentFont:opts.font,size:accent?accentSize:size});
+  const measure=(value,accent)=>{const s=style(accent);g.font=`400 ${s.size}px ${s.font}`;return g.measureText(value).width;};
+  let row=[],rowWidth=0,line=0,offset=0;
+  const emit=()=>{
+   let cursor=x;
+   const yy=y+line*lh,runs=[];
+   for(const word of row){const last=runs.at(-1);if(last&&last.accent===word.accent)last.text+=' '+word.text;else runs.push({...word});}
+   runs.forEach((run,index)=>{const s=style(run.accent),w=measure(run.text,run.accent);
+    if(run.accent)softMarker(cursor,yy,w,accentSize,line);
+    ink(run.text,cursor,yy,s.size,{font:s.font,color:INK});
+    cursor+=w+(index<runs.length-1?measure(' ',false):0);
+   });
+   row=[];rowWidth=0;line++;
+  };
+  g.save();
+  const tokens=[];
+  for(const word of normalized.split(' ')){
+   const accent=ranges.some(r=>offset<r.end&&offset+word.length>r.start),last=tokens.at(-1);
+   if(accent&&last?.accent)last.text+=' '+word;else tokens.push({text:word,accent});offset+=word.length+1;
+  }
+  for(const {text:word,accent} of tokens.flatMap(t=>measure(t.text,t.accent)>width?t.text.split(' ').map(text=>({text,accent:t.accent})): [t])){
+   const w=measure(word,accent),space=row.length?measure(' ',row.at(-1).accent===accent?accent:false):0;
+   if(row.length&&rowWidth+space+w>width)emit();
+   rowWidth+=(row.length?measure(' ',row.at(-1).accent===accent?accent:false):0)+w;row.push({text:word,accent});offset+=word.length+1;
+  }
+  if(row.length)emit();g.restore();return y+line*lh;
+ }
+ function softMarker(x,y,w,size,line){
+  // Cached on the leaf: translucent pigment, a dry edge and tiny paper gaps.
+  const top=y-size*.73,bottom=y+5;
+  g.save();g.globalCompositeOperation='multiply';g.fillStyle='#efbf5265';g.beginPath();g.moveTo(x-7,top+4);
+  for(let u=0;u<=w;u+=9)g.lineTo(x+u,top+Math.sin(u*.073+line)*1.5+(rand()-.5)*2);
+  g.lineTo(x+w+4,top+2);g.lineTo(x+w+9,top+9);g.lineTo(x+w+7,bottom-2);g.lineTo(x+w+1,bottom);
+  for(let u=w;u>=0;u-=8)g.lineTo(x+u,bottom+Math.sin(u*.05+line)*1.2+(rand()-.5)*1.6);
+  g.lineTo(x-8,bottom+1);g.lineTo(x-4,bottom-5);g.lineTo(x-9,bottom-7);g.lineTo(x-5,top+9);g.closePath();g.fill();
+  for(let j=0;j<7;j++){g.strokeStyle=j%2?'#e6ab2610':'#f4cb6b12';g.lineWidth=.5+rand()*1.2;g.beginPath();const yy=top+3+j*3;g.moveTo(x-3+rand()*5,yy);g.bezierCurveTo(x+w*.3,yy-1,x+w*.7,yy+2,x+w+3,yy+rand()*2);g.stroke();}
+  g.globalCompositeOperation='source-over';g.fillStyle='#faf8f020';for(let j=0;j<w*.7;j++)g.fillRect(x+rand()*w,top+rand()*(bottom-top),.5+rand(),.5);g.restore();
+ }
+ function paragraphs(texts,x,y,width,size=29,opts={}){
+  if(!opts.font){size=Math.min(24,size*.86);opts={...opts,font:'Georgia',accentFont:'Note',lineHeight:size*1.55,gap:opts.gap??21};}
+  const start=y,bottom=opts.bottom??738,original=g,originalSeed=seed;
+  const probe=canvas(600,780).getContext('2d');
+  for(let attempt=0;attempt<10;attempt++){
+   g=probe;let end=start;
+   for(const t of texts)end=lines(t,x,end,width,size,opts)+(opts.gap??17);
+   g=original;seed=originalSeed;
+   if(end-(opts.gap??17)<=bottom||size<=19)break;
+   size-=.5;opts={...opts,lineHeight:size*1.5,gap:Math.min(opts.gap??17,20)};
+  }
+  for(const t of texts)y=lines(t,x,y,width,size,opts)+(opts.gap??17);
+  if(y-(opts.gap??17)>bottom)overflow.push({page:activePage,y,bottom,text:texts.at(-1)});return y;
+ }
+ function title(text,x=63,y=87,width=475,size=46){size=Math.min(size,42);return lines(text,x,y,width,size,{font:'Note',lineHeight:size*1.20,gap:0})+17;}
  function heart(x,y,s=27,color=ROSE,rotation=-.16){const variant=(Math.round(x*13+y*7+s)+Number(activePage.slice(0,-1))*3)%12;drawPenHeart(g,x,y,s,color,rotation,variant);}
  function underline(x,y,w,color=ROSE){g.save();g.strokeStyle=color;g.lineWidth=1.3;g.beginPath();g.moveTo(x,y);g.bezierCurveTo(x+w*.25,y+4,x+w*.6,y-3,x+w,y+1);g.stroke();g.restore();}
  function tape(x,y,w=92,a=-.08){
@@ -111,25 +169,29 @@ window.createBookPainter=function(assets){
   ink('Фотографии сохраняют день.',300,690,32,{align:'center',color:'#4a3935'});ink('История возвращает в него.',300,727,32,{align:'center',color:'#4a3935'});
  }
  if(i===1&&side==='L'){
-  title('Чтобы важное оставалось рядом',57,83,450,47);
-  paragraphs([p[0],p[1]],64,222,466,32,{font:'Hand',lineHeight:39,gap:23});
-  heartGroup(446,692,.8,ROSE,-.1);
+  ink('Чтобы важное',64,87,46,{font:'Note',rotate:-.018});
+  ink('оставалось рядом',82,140,46,{font:'Note',rotate:-.008});
+  g.save();g.fillStyle='#b96e737e';g.beginPath();g.moveTo(61,163);g.bezierCurveTo(171,149,337,153,469,155);g.lineTo(481,158);g.bezierCurveTo(339,157,173,153,58,166);g.closePath();g.fill();g.restore();
+  paragraphs([p[0],p[1]],64,222,466,24,{font:'Georgia',accentFont:'Note',lineHeight:38,gap:23});
+  heart(467,690,20,'#b65867',-.24);heart(501,697,7,'#b65867',.15);
+  g.save();g.strokeStyle='#b65867';g.lineCap='round';
+  for(const [x,y,dx,dy,sw] of [[490,675,1,-8,1.5],[503,677,4,-11,1.2],[512,682,7,-4,1.1],[447,704,-7,-2,1.3],[450,711,-5,-1,.9]]){g.lineWidth=sw;g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+dx*.4,y+dy*.7,x+dx,y+dy);g.stroke();}g.restore();
  }
  if(i===1&&side==='R'){
-  paragraphs(p.slice(2),65,83,470,26,{lineHeight:37,gap:18});
+  paragraphs(p.slice(2),65,83,470,26,{lineHeight:37,gap:18,bottom:365});
   photo(8,75,402,235,302,-.075,'это мгновение',{crop:.4});
   photo(2,338,467,177,237,.105,'переверни',{crop:.45});
   botanical('cosmos',328,568,250,-.09,true);
   heartGroup(282,434,.7,'#5d5147',-.2);
  }
- if(i===2&&side==='L'){title('Ваша уникальная история',60,85,470,46);paragraphs([p[0]],67,192,455,28,{lineHeight:43});photo(1,70,310,266,344,-.06,'ваша история');photo(10,326,411,196,257,.085,'два взгляда',{crop:.55});ink('А что помнишь ты?',91,707,31,{font:'Pen',rotate:-.035,color:ROSE});heartGroup(429,362,.85,'#4c4944',-.3);}
- if(i===2&&side==='R'){noteCard(p[1],70,58,461,207,-.015);tape(246,48,101,.045);paragraphs(p.slice(2),69,328,457,29,{lineHeight:46,gap:28});botanical('flowerHead',467,685,131,-.29,true);ink('Нажмите на снимок —',72,679,26,{font:'Pen',color:ROSE});ink('у него есть оборот.',79,712,26,{font:'Pen',color:ROSE});}
+ if(i===2&&side==='L'){title('Ваша уникальная история',60,85,470,46);paragraphs([p[0]],67,192,455,28,{lineHeight:43,bottom:275});photo(1,70,310,266,344,-.06,'ваша история');photo(10,326,411,196,257,.085,'два взгляда',{crop:.55});ink('А что помнишь ты?',91,707,31,{font:'Pen',rotate:-.035,color:ROSE});heartGroup(429,362,.85,'#4c4944',-.3);}
+ if(i===2&&side==='R'){noteCard(p[1],70,58,461,207,-.015);tape(246,48,101,.045);paragraphs(p.slice(2),69,328,457,29,{lineHeight:46,gap:28,bottom:626});botanical('flowerHead',467,685,131,-.29,true);ink('Нажмите на снимок —',72,679,26,{font:'Pen',color:ROSE});ink('у него есть оборот.',79,712,26,{font:'Pen',color:ROSE});}
  if(i===3&&side==='L'){title('Глазами близких',60,86,470,51);photo(3,68,186,315,426,-.034,'самые близкие',{crop:.7});botanical('eucalyptus',442,367,470,-.22,true);heartGroup(142,147,.77,ROSE,.06);envelope(312,571,245,111,'Приглашение близким','invite',-.035,'#e6e8dc');ink('Сколько любви в одном дне',64,718,30,{font:'Pen',rotate:-.025,color:ROSE});}
  if(i===3&&side==='R'){paragraphs(p,69,96,460,28,{lineHeight:43,gap:24});}
- if(i===4&&side==='L'){title('Письма в будущее',61,77,477,49);paragraphs([p[0]],65,152,470,27,{lineHeight:41});envelope(57,302,234,136,'Мише','misha',-.055);envelope(319,327,230,135,'Ксюше','ksusha',.046,'#eee0dc');paragraphs([p[1]],64,518,465,26,{lineHeight:39,gap:0});}
- if(i===4&&side==='R'){paragraphs([p[2]],65,87,468,26,{lineHeight:39});envelope(139,258,349,160,'Будущим нам','together',-.035,'#e1e4d8');botanical('lavender',118,355,224,-.52,true);paragraphs(p.slice(3),63,469,470,25,{lineHeight:36,gap:13});}
+ if(i===4&&side==='L'){title('Письма в будущее',61,77,477,49);lines('Есть слова, которые хочется сказать сейчас,',65,152,470,20.5,{font:'Georgia',accentFont:'Note',lineHeight:36});lines('а подарить — в особенный день, спустя годы.',65,188,470,20.5,{font:'Georgia',accentFont:'Note',lineHeight:36});envelope(57,265,234,136,'Мише','misha',-.055);envelope(319,327,230,135,'Ксюше','ksusha',.046,'#eee0dc');paragraphs([p[1]],64,518,465,26,{lineHeight:39,gap:0});}
+ if(i===4&&side==='R'){paragraphs([p[2]],65,87,468,26,{lineHeight:39,bottom:215});envelope(139,258,349,160,'Будущим нам','together',-.035,'#e1e4d8');botanical('lavender',118,355,224,-.52,true);paragraphs(p.slice(3),63,469,470,25,{lineHeight:36,gap:13});}
  if(i===5&&side==='L'){photo(7,59,86,283,389,-.05,'ваше самое дорогое',{crop:.52});photo(5,368,143,166,225,.065,'Ксюша',{taped:true});photo(6,328,419,183,241,.047,'Уже часть вашей истории',{taped:true});botanical('fern',230,576,283,.57,true);ink('соберём по кусочкам',180,708,31,{font:'Pen',rotate:-.014,color:ROSE});}
- if(i===5&&side==='R'){title('Мы бережно оформим вашу историю',64,84,470,47);paragraphs(p.slice(0,2),68,255,460,30,{lineHeight:49,gap:26});noteCard(p[2],85,535,434,169,-.02);heartGroup(440,716,.75,ROSE,.05);}
+ if(i===5&&side==='R'){title('Мы бережно оформим вашу историю',64,84,470,47);paragraphs(p.slice(0,2),68,255,460,30,{lineHeight:49,gap:26,bottom:493});noteCard(p[2],85,535,434,169,-.02);heartGroup(440,716,.75,ROSE,.05);}
  if(i===6&&side==='L'){
   ink('и столько всего впереди…',71,99,40,{rotate:-.025,color:ROSE});
   photo(9,173,171,330,438,.062,'день за днём',{crop:.52});
@@ -139,7 +201,7 @@ window.createBookPainter=function(assets){
   ink('Миша и Ксюша',244,726,33,{rotate:.005});
  }
  if(i===6&&side==='R'){
-  paragraphs(p,70,113,455,29,{lineHeight:45,gap:35});
+  paragraphs(p,70,113,455,29,{lineHeight:45,gap:35,bottom:440});
   paperSlip(78,492,449,167,-.027,'#eee5d3');tape(248,482,84,.10);
   ink('Вместе. Каждую секунду.',105,550,34,{color:ROSE,rotate:-.02});underline(108,565,301);
   ink('с того самого дня',112,613,27,{font:'Pen',rotate:-.03,color:'#62645b'});
