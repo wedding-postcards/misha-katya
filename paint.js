@@ -45,7 +45,7 @@ window.createBookPainter=function(assets){
  function lines(text,x,y,width,size=29,opts={}){
   g.save();g.font=`400 ${size}px ${opts.font||'Note'}`;
   const normalized=text.replace(/\s+/g,' ').trim(),lh=opts.lineHeight||size*1.58;
-  const marks=opts.font==='Hand'?[]:markedPhrases.filter(t=>normalized.includes(t)).map(t=>({start:normalized.indexOf(t),end:normalized.indexOf(t)+t.length}));
+  const marks=opts.highlight===false?[]:markedPhrases.filter(t=>normalized.includes(t)).map(t=>({start:normalized.indexOf(t),end:normalized.indexOf(t)+t.length}));
   let row='',line=0,offset=0;
   const emit=()=>{const xx=x+Math.sin(line*2.3+seed)*1.1,yy=y+line*lh;
    for(const {start,end} of marks)if(offset<end&&offset+row.length>start){const from=Math.max(0,start-offset),to=Math.min(row.length,end-offset);marker(xx+g.measureText(row.slice(0,from)).width,yy,g.measureText(row.slice(from,to)).width,size,line);}
@@ -112,7 +112,7 @@ window.createBookPainter=function(assets){
  }
  if(i===1&&side==='L'){
   title('Чтобы важное оставалось рядом',57,83,450,47);
-  paragraphs([p[0],p[1]],64,222,466,28,{lineHeight:41,gap:23});
+  paragraphs([p[0],p[1]],64,222,466,32,{font:'Hand',lineHeight:39,gap:23});
   heartGroup(446,692,.8,ROSE,-.1);
  }
  if(i===1&&side==='R'){

@@ -47,3 +47,8 @@ body{background-color:#272320;background-image:radial-gradient(ellipse at 28% 18
 #view-mode{border-bottom-color:#e5d6c178}
 .loading{background:#272320;color:#ece2d3}
 body.reading-mode #book-header{background:#282320}
+
+/* A quiet pen stroke points to the optional reading view. */
+.mobile-cue{position:absolute;right:205px;top:17px;width:96px;height:48px;fill:none;stroke:#ece2d3;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;opacity:.8;pointer-events:none}
+body.reading-mode .mobile-cue{display:none}
+@media(max-width:760px){.mobile-cue{right:30px;top:52px;width:66px;height:33px;transform:rotate(-35deg);transform-origin:right top}}
